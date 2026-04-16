@@ -260,6 +260,7 @@
         <div class="tab" data-tab-target="tab-purchase">Purchase</div>
         <div class="tab" data-tab-target="tab-warranty">Warranty</div>
         <div class="tab" data-tab-target="tab-assignment">Assignment</div>
+        <div class="tab" data-tab-target="tab-attachments">Attachments</div>
       </div>
       <form id="form-asset">
         <input type="hidden" id="a-id">
@@ -311,6 +312,27 @@
           <div class="form-group"><label>Assigned User</label><select class="input" id="a-assigned_user_id"><option value="">Unassigned</option></select></div>
           <div class="form-group"><label>Department</label><select class="input" id="a-department_id"><option value="">Select…</option></select></div>
           <div class="form-group"><label>Location</label><select class="input" id="a-location_id"><option value="">Select…</option></select></div>
+        </div>
+        <!-- Attachments -->
+        <div id="tab-attachments" style="display:none">
+          <div id="attach-upload-wrap" style="display:none;margin-bottom:16px">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Label</label>
+                <select class="input" id="attach-label">
+                  <option>Invoice</option><option>Photo</option><option>Manual</option>
+                  <option>Warranty</option><option>Contract</option><option>Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>File <span class="req">*</span></label>
+                <input type="file" class="input" id="attach-file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.txt,.csv">
+              </div>
+            </div>
+            <button class="btn btn-success sm" style="margin-top:8px" onclick="uploadAttachment()">⬆ Upload File</button>
+            <div id="attach-upload-alert" style="margin-top:8px"></div>
+          </div>
+          <div id="attach-list"><p style="color:var(--muted);font-size:13px">Save the asset first, then you can upload attachments.</p></div>
         </div>
       </form>
     </div>
@@ -896,6 +918,15 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     const target = tab.dataset.tabTarget;
     parent.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = el.id === target ? '' : 'none');
+
+    // Load attachments when tab is opened and asset already has an ID
+    if (target === 'tab-attachments') {
+      const assetId = document.getElementById('a-id').value;
+      if (assetId) {
+        document.getElementById('attach-upload-wrap').style.display = '';
+        loadAttachments(parseInt(assetId));
+      }
+    }
   });
 });
 
@@ -928,6 +959,90 @@ function paginationHTML(page, totalPages, total, fn) {
     ${page > 1 ? `<button class="btn btn-ghost sm" onclick="${fn}(${page-1})">‹ Prev</button>` : ''}
     ${page < totalPages ? `<button class="btn btn-ghost sm" onclick="${fn}(${page+1})">Next ›</button>` : ''}
   </div>`;
+}
+
+// ── Attachments ───────────────────────────────────────────────
+async function loadAttachments(assetId) {
+  const el = document.getElementById('attach-list');
+  el.innerHTML = '<div class="loader">Loading…</div>';
+
+  const r = await apiFetch(`api/attachments.php?asset_id=${assetId}`);
+  if (!r.success) { el.innerHTML = errHTML(r.message); return; }
+
+  const items = r.data;
+  if (!items.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px">No attachments yet.</p>';
+    return;
+  }
+
+  const iconMap = {
+    'application/pdf': '📄',
+    'image/jpeg': '🖼️', 'image/png': '🖼️', 'image/gif': '🖼️', 'image/webp': '🖼️',
+    'application/msword': '📝',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📝',
+    'application/vnd.ms-excel': '📊',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '📊',
+  };
+
+  let html = `<div class="table-wrap"><table><thead><tr>
+    <th>Label</th><th>File Name</th><th>Type</th><th>Size</th><th>Uploaded By</th><th>Date</th><th></th>
+  </tr></thead><tbody>`;
+
+  items.forEach(a => {
+    const icon = iconMap[a.file_type] || '📎';
+    html += `<tr>
+      <td><span class="chip chip-instock">${esc(a.label)}</span></td>
+      <td>${icon} <a href="${esc(a.download_url)}" target="_blank" style="color:var(--accent)">${esc(a.file_name)}</a></td>
+      <td style="font-size:11px;color:var(--muted)">${esc(a.file_type)}</td>
+      <td style="font-size:12px">${esc(a.file_size_kb||'—')}</td>
+      <td style="font-size:12px">${esc(a.uploaded_by_name||'—')}</td>
+      <td style="font-size:11px;color:var(--muted)">${a.uploaded_at}</td>
+      <td><button class="btn btn-danger sm" onclick="deleteAttachment(${a.id}, ${a.asset_id})">✕</button></td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+}
+
+async function uploadAttachment() {
+  const assetId = document.getElementById('a-id').value;
+  if (!assetId) { alert('Save the asset first.'); return; }
+
+  const fileInput = document.getElementById('attach-file');
+  const label     = document.getElementById('attach-label').value;
+  const alertEl   = document.getElementById('attach-upload-alert');
+
+  if (!fileInput.files.length) {
+    alertEl.innerHTML = errHTML('Please select a file.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file',        fileInput.files[0]);
+  formData.append('asset_id',    assetId);
+  formData.append('label',       label);
+  formData.append('uploaded_by', CURRENT_USER);
+
+  alertEl.innerHTML = '<span style="color:var(--muted);font-size:12px">Uploading…</span>';
+
+  const res = await fetch('api/attachments.php', { method: 'POST', body: formData });
+  const r   = await res.json();
+
+  if (r.success) {
+    alertEl.innerHTML = `<div class="alert alert-success">✓ Uploaded successfully.</div>`;
+    fileInput.value = '';
+    loadAttachments(assetId);
+  } else {
+    alertEl.innerHTML = errHTML(r.message);
+  }
+}
+
+async function deleteAttachment(id, assetId) {
+  if (!confirm('Delete this attachment? This cannot be undone.')) return;
+  const r = await apiFetch(`api/attachments.php?id=${id}`, { method: 'DELETE' });
+  if (r.success) loadAttachments(assetId);
+  else alert(r.message);
 }
 
 // ── Init ─────────────────────────────────────────────────────
