@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT&DS Tracker — Module 1: Asset & Inventory</title>
+<style>
+  /* ── TEMP UI: Functional placeholder — replace with proper mockups ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --border:    #2a2d3a;
+    --accent:    #4f8ef7;
+    --accent2:   #34d399;
+    --danger:    #f87171;
+    --warn:      #fbbf24;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --radius:    8px;
+    --sidebar-w: 220px;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  #sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; }
+  #sidebar h1 { font-size: 13px; font-weight: 700; padding: 18px 16px 8px; color: var(--accent); letter-spacing: .05em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .nav-group { padding: 8px 0; }
+  .nav-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 6px 16px 2px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; cursor: pointer; border-left: 3px solid transparent; color: var(--muted); transition: all .15s; font-size: 13px; }
+  .nav-item:hover { background: rgba(79,142,247,.08); color: var(--text); }
+  .nav-item.active { border-left-color: var(--accent); background: rgba(79,142,247,.12); color: var(--accent); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* Main content */
+  #main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+  #topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+  #topbar h2 { font-size: 16px; font-weight: 600; flex: 1; }
+  .badge { background: var(--accent); color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 700; }
+  .badge.warn { background: var(--warn); color: #000; }
+  .badge.danger { background: var(--danger); }
+
+  #content { padding: 24px; flex: 1; overflow-y: auto; }
+
+  /* Views */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Stat cards */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-card .value.green { color: var(--accent2); }
+  .stat-card .value.red   { color: var(--danger); }
+  .stat-card .value.warn  { color: var(--warn); }
+
+  /* Table */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .table-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: rgba(255,255,255,.03); padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,.03); }
+  td { padding: 10px 14px; vertical-align: middle; }
+  .empty-row td { text-align: center; color: var(--muted); padding: 32px; }
+
+  /* Forms / Inputs */
+  .input, select, textarea { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 8px 12px; font-size: 13px; font-family: inherit; width: 100%; outline: none; transition: border-color .15s; }
+  .input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--bg); }
+  .input.sm { padding: 6px 10px; font-size: 12px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3a7ae8; }
+  .btn-success { background: var(--accent2); color: #000; }
+  .btn-success:hover { background: #22c483; }
+  .btn-danger  { background: var(--danger);  color: #fff; }
+  .btn-danger:hover  { background: #ef4444; }
+  .btn-ghost  { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { background: rgba(255,255,255,.06); }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+
+  /* Status chips */
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .chip-inuse    { background: rgba(79,142,247,.2); color: #7eb3fa; }
+  .chip-instock  { background: rgba(52,211,153,.2); color: #34d399; }
+  .chip-repair   { background: rgba(251,191,36,.2);  color: #fbbf24; }
+  .chip-retired  { background: rgba(100,116,139,.2); color: #94a3b8; }
+  .chip-disposed { background: rgba(239,68,68,.2);   color: #f87171; }
+  .chip-lost     { background: rgba(239,68,68,.3);   color: #fca5a5; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 600px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+  .modal-header h3 { flex: 1; font-size: 15px; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; padding: 2px 6px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 20px; overflow-y: auto; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* Form grid */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid.cols-1 { grid-template-columns: 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  label .req { color: var(--danger); }
+
+  /* Pagination */
+  .pagination { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-top: 1px solid var(--border); }
+  .page-info { flex: 1; font-size: 12px; color: var(--muted); }
+
+  /* Alert */
+  .alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 14px; }
+  .alert-error { background: rgba(248,113,113,.15); border: 1px solid rgba(248,113,113,.4); color: var(--danger); }
+  .alert-success { background: rgba(52,211,153,.15); border: 1px solid rgba(52,211,153,.4); color: var(--accent2); }
+
+  /* Loader */
+  .loader { text-align: center; padding: 32px; color: var(--muted); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab { padding: 8px 16px; cursor: pointer; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <h1>IT&DS Tracker</h1>
+  <div class="nav-group">
+    <div class="nav-label">Module 1</div>
+    <div class="nav-item active" data-view="dashboard"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item" data-view="assets"><span class="icon">💻</span> Assets</div>
+    <div class="nav-item" data-view="stock"><span class="icon">📦</span> Stock Items</div>
+    <div class="nav-item" data-view="transactions"><span class="icon">↔️</span> Transactions</div>
+    <div class="nav-item" data-view="cyclecounts"><span class="icon">🔢</span> Cycle Counts</div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Reference Data</div>
+    <div class="nav-item" data-view="categories"><span class="icon">🏷️</span> Categories</div>
+    <div class="nav-item" data-view="locations"><span class="icon">📍</span> Locations</div>
+    <div class="nav-item" data-view="vendors"><span class="icon">🏢</span> Vendors</div>
+    <div class="nav-item" data-view="users"><span class="icon">👤</span> Users</div>
+  </div>
+</nav>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h2 id="page-title">Dashboard</h2>
+    <span id="topbar-actions"></span>
+  </div>
+  <div id="content">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="stat-grid" id="stat-cards">
+        <div class="stat-card"><div class="label">Total Assets</div><div class="value" id="s-total">—</div></div>
+        <div class="stat-card"><div class="label">In-Use</div><div class="value green" id="s-inuse">—</div></div>
+        <div class="stat-card"><div class="label">In-Stock</div><div class="value" id="s-instock">—</div></div>
+        <div class="stat-card"><div class="label">Under Repair</div><div class="value warn" id="s-repair">—</div></div>
+        <div class="stat-card"><div class="label">Retired/Disposed</div><div class="value red" id="s-retired">—</div></div>
+        <div class="stat-card"><div class="label">Low Stock Alerts</div><div class="value warn" id="s-lowstock">—</div></div>
+      </div>
+      <p style="color:var(--muted);font-size:13px;">⚠️ <em>Temporary UI — Dashboard charts will be added by the UI/mockup team.</em></p>
+    </div>
+
+    <!-- ASSETS -->
+    <div class="view" id="view-assets">
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <input class="input sm" style="width:200px" id="asset-search" placeholder="Search tag, serial, make…">
+          <select class="input sm" style="width:150px" id="asset-filter-status">
+            <option value="">All Statuses</option>
+            <option>In-Use</option><option>In-Stock</option><option>Under Repair</option>
+            <option>Retired</option><option>Disposed</option><option>Lost</option>
+          </select>
+          <select class="input sm" style="width:150px" id="asset-filter-cat"><option value="">All Categories</option></select>
+          <button class="btn btn-ghost sm" onclick="loadAssets()">🔍 Filter</button>
+          <button class="btn btn-primary sm" onclick="openAssetModal()">+ New Asset</button>
+        </div>
+        <div id="asset-table-container"><div class="loader">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- STOCK ITEMS -->
+    <div class="view" id="view-stock">
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <input class="input sm" style="width:200px" id="stock-search" placeholder="Search code, name…">
+          <button class="btn btn-ghost sm" onclick="loadStock()">🔍 Filter</button>
+          <button class="btn btn-primary sm" onclick="openStockModal()">+ New Item</button>
+          <button class="btn btn-ghost sm" onclick="navigate('transactions')">📋 Transactions</button>
+        </div>
+        <div id="stock-table-container"><div class="loader">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="view" id="view-transactions">
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <select class="input sm" style="width:150px" id="txn-filter-type">
+            <option value="">All Types</option>
+            <option>GRN</option><option>Issue</option><option>Transfer</option>
+            <option>Adjustment</option><option>CycleCountAdj</option>
+          </select>
+          <button class="btn btn-ghost sm" onclick="loadTransactions()">🔍 Filter</button>
+          <button class="btn btn-primary sm" onclick="openTxnModal('grn')">📥 GRN</button>
+          <button class="btn btn-ghost sm" onclick="openTxnModal('issue')">📤 Issue</button>
+          <button class="btn btn-ghost sm" onclick="openTxnModal('transfer')">↔️ Transfer</button>
+          <button class="btn btn-ghost sm" onclick="openTxnModal('adjust')">✏️ Adjust</button>
+        </div>
+        <div id="txn-table-container"><div class="loader">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- CYCLE COUNTS -->
+    <div class="view" id="view-cyclecounts">
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <span style="color:var(--muted);font-size:12px">Physical Inventory Plans</span>
+          <button class="btn btn-primary sm" onclick="openCycleModal()">+ New Count Plan</button>
+        </div>
+        <div id="cycle-table-container"><div class="loader">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- CATEGORIES / VENDORS / USERS / LOCATIONS -->
+    <div class="view" id="view-categories"><div id="cat-container"><div class="loader">Loading…</div></div></div>
+    <div class="view" id="view-locations"><div id="loc-container"><div class="loader">Loading…</div></div></div>
+    <div class="view" id="view-vendors"><div id="vendor-container"><div class="loader">Loading…</div></div></div>
+    <div class="view" id="view-users"><div id="user-container"><div class="loader">Loading…</div></div></div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ── MODAL: Asset Form ───────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-asset">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-asset-title">New Asset</h3>
+      <button class="modal-close" onclick="closeModal('modal-asset')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-asset-alert"></div>
+      <div class="tabs">
+        <div class="tab active" data-tab-target="tab-basic">Basic Info</div>
+        <div class="tab" data-tab-target="tab-specs">Specs</div>
+        <div class="tab" data-tab-target="tab-purchase">Purchase</div>
+        <div class="tab" data-tab-target="tab-warranty">Warranty</div>
+        <div class="tab" data-tab-target="tab-assignment">Assignment</div>
+      </div>
+      <form id="form-asset">
+        <input type="hidden" id="a-id">
+        <!-- Basic -->
+        <div class="form-grid" id="tab-basic">
+          <div class="form-group"><label>Asset Tag <span class="req">*</span></label><input class="input" id="a-asset_tag" required></div>
+          <div class="form-group"><label>Serial Number</label><input class="input" id="a-serial_number"></div>
+          <div class="form-group"><label>Barcode / QR</label><input class="input" id="a-barcode"></div>
+          <div class="form-group"><label>Category <span class="req">*</span></label><select class="input" id="a-category_id" required><option value="">Select…</option></select></div>
+          <div class="form-group"><label>Make / Brand</label><input class="input" id="a-make"></div>
+          <div class="form-group"><label>Model</label><input class="input" id="a-model"></div>
+          <div class="form-group"><label>Status</label>
+            <select class="input" id="a-status">
+              <option>In-Stock</option><option>In-Use</option><option>Under Repair</option>
+              <option>Retired</option><option>Disposed</option><option>Lost</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Parent Asset ID</label><input class="input" id="a-parent_asset_id" type="number" min="1"></div>
+          <div class="form-group full"><label>Notes</label><textarea class="input" id="a-notes" rows="2"></textarea></div>
+        </div>
+        <!-- Specs (hidden by default) -->
+        <div class="form-grid" id="tab-specs" style="display:none">
+          <div class="form-group"><label>CPU</label><input class="input" id="a-cpu"></div>
+          <div class="form-group"><label>RAM</label><input class="input" id="a-ram" placeholder="e.g. 16GB DDR4"></div>
+          <div class="form-group"><label>Storage</label><input class="input" id="a-storage" placeholder="e.g. 512GB SSD"></div>
+          <div class="form-group"><label>OS</label><input class="input" id="a-os"></div>
+          <div class="form-group"><label>Firmware Version</label><input class="input" id="a-firmware_version"></div>
+          <div class="form-group"><label>Installed At</label><input class="input" id="a-installed_at"></div>
+          <div class="form-group"><label>Connected To</label><input class="input" id="a-connected_to"></div>
+        </div>
+        <!-- Purchase -->
+        <div class="form-grid" id="tab-purchase" style="display:none">
+          <div class="form-group"><label>Vendor</label><select class="input" id="a-vendor_id"><option value="">Select…</option></select></div>
+          <div class="form-group"><label>PO Number</label><input class="input" id="a-po_number"></div>
+          <div class="form-group"><label>Invoice Number</label><input class="input" id="a-invoice_number"></div>
+          <div class="form-group"><label>Purchase Cost</label><input class="input" id="a-purchase_cost" type="number" step="0.01"></div>
+          <div class="form-group"><label>Date Acquired</label><input class="input" id="a-date_acquired" type="date"></div>
+          <div class="form-group"><label>Cost Center</label><input class="input" id="a-cost_center"></div>
+        </div>
+        <!-- Warranty -->
+        <div class="form-grid" id="tab-warranty" style="display:none">
+          <div class="form-group"><label>Warranty Start</label><input class="input" id="a-warranty_start" type="date"></div>
+          <div class="form-group"><label>Warranty End</label><input class="input" id="a-warranty_end" type="date"></div>
+          <div class="form-group"><label>SLA Tier</label><input class="input" id="a-sla_tier" placeholder="e.g. Gold, Silver, NBD"></div>
+          <div class="form-group"><label>Support Contract Ref</label><input class="input" id="a-support_contract_ref"></div>
+        </div>
+        <!-- Assignment -->
+        <div class="form-grid" id="tab-assignment" style="display:none">
+          <div class="form-group"><label>Assigned User</label><select class="input" id="a-assigned_user_id"><option value="">Unassigned</option></select></div>
+          <div class="form-group"><label>Department</label><select class="input" id="a-department_id"><option value="">Select…</option></select></div>
+          <div class="form-group"><label>Location</label><select class="input" id="a-location_id"><option value="">Select…</option></select></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-asset')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAsset()">Save Asset</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Stock Item Form ─────────────────────────────────── -->
+<div class="modal-overlay" id="modal-stock">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>New Stock Item</h3>
+      <button class="modal-close" onclick="closeModal('modal-stock')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-stock-alert"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Item Code <span class="req">*</span></label><input class="input" id="si-item_code" required></div>
+        <div class="form-group"><label>Name <span class="req">*</span></label><input class="input" id="si-name" required></div>
+        <div class="form-group"><label>Category</label><select class="input" id="si-category_id"><option value="">Select…</option></select></div>
+        <div class="form-group"><label>Unit of Measure</label><input class="input" id="si-uom" value="pcs"></div>
+        <div class="form-group"><label>Unit Cost</label><input class="input" id="si-unit_cost" type="number" step="0.01"></div>
+        <div class="form-group"><label>Has Expiry?</label>
+          <select class="input" id="si-has_expiry"><option value="0">No</option><option value="1">Yes</option></select>
+        </div>
+        <div class="form-group full"><label>Compatible Models</label><input class="input" id="si-compatible_models" placeholder="Comma-separated model names"></div>
+        <div class="form-group full"><label>Description</label><textarea class="input" id="si-description" rows="2"></textarea></div>
+        <div class="form-group"><label>Initial Location</label><select class="input" id="si-location_id"><option value="">Select…</option></select></div>
+        <div class="form-group"><label>Initial Qty</label><input class="input" id="si-qty" type="number" step="0.001" value="0"></div>
+        <div class="form-group"><label>Min Level</label><input class="input" id="si-min" type="number" step="0.001" value="0"></div>
+        <div class="form-group"><label>Max Level</label><input class="input" id="si-max" type="number" step="0.001"></div>
+        <div class="form-group"><label>Reorder Point</label><input class="input" id="si-rop" type="number" step="0.001"></div>
+        <div class="form-group"><label>Lead Time (days)</label><input class="input" id="si-lead" type="number"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-stock')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStockItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Transaction Form ────────────────────────────────── -->
+<div class="modal-overlay" id="modal-txn">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-txn-title">New Transaction</h3>
+      <button class="modal-close" onclick="closeModal('modal-txn')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-txn-alert"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Item <span class="req">*</span></label><select class="input" id="txn-item_id"><option value="">Select…</option></select></div>
+        <div id="txn-from-loc-wrap" class="form-group" style="display:none"><label>From Location</label><select class="input" id="txn-from_loc"><option value="">Select…</option></select></div>
+        <div class="form-group"><label>To / At Location <span class="req">*</span></label><select class="input" id="txn-to_loc"><option value="">Select…</option></select></div>
+        <div class="form-group"><label>Quantity <span class="req">*</span></label><input class="input" id="txn-qty" type="number" step="0.001" min="0.001"></div>
+        <div id="txn-newqty-wrap" class="form-group" style="display:none"><label>New Quantity (Adjustment) <span class="req">*</span></label><input class="input" id="txn-newqty" type="number" step="0.001"></div>
+        <div class="form-group"><label>Reference</label><input class="input" id="txn-ref" placeholder="PO / WO number…"></div>
+        <div class="form-group"><label>Reason</label>
+          <select class="input" id="txn-reason">
+            <option value="Normal">Normal</option><option value="Damage">Damage</option>
+            <option value="Loss">Loss</option><option value="AuditCorrection">Audit Correction</option>
+            <option value="ProjectAllocation">Project Allocation</option><option value="Return">Return</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>Notes</label><textarea class="input" id="txn-notes" rows="2"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-txn')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTxn()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Cycle Count Plan ───────────────────────────────── -->
+<div class="modal-overlay" id="modal-cycle">
+  <div class="modal" style="width:460px">
+    <div class="modal-header">
+      <h3>New Cycle Count Plan</h3>
+      <button class="modal-close" onclick="closeModal('modal-cycle')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-cycle-alert"></div>
+      <div class="form-grid cols-1">
+        <div class="form-group"><label>Plan Name <span class="req">*</span></label><input class="input" id="cc-name" required></div>
+        <div class="form-group"><label>Planned Date <span class="req">*</span></label><input class="input" id="cc-date" type="date" required></div>
+        <div class="form-group"><label>Location (auto-populate entries)</label><select class="input" id="cc-location"><option value="">All / Manual</option></select></div>
+        <div class="form-group"><label>Notes</label><textarea class="input" id="cc-notes" rows="2"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-cycle')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCyclePlan()">Create Plan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  TEMP UI JavaScript — Module 1 API Client
+//  Replace this with the proper UI when mockups are ready.
+// ═══════════════════════════════════════════════════════════
+
+const API = {
+  assets:      'api/assets.php',
+  stock:       'api/stock_items.php',
+  txn:         'api/stock_transactions.php',
+  cycles:      'api/cycle_counts.php',
+  lookups:     'api/lookups.php',
+};
+
+// Current performer (hardcoded for temp UI — replace with session)
+const CURRENT_USER = 1;
+
+// ── State ────────────────────────────────────────────────────
+let assetPage = 1, stockPage = 1, txnPage = 1, cyclePage = 1;
+let currentTxnAction = 'grn';
+let lookupCache = {};
+
+// ── Navigation ───────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.view));
+});
+
+function navigate(view) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  document.getElementById('page-title').textContent = {
+    dashboard: 'Dashboard', assets: 'Assets', stock: 'Stock Items',
+    transactions: 'Transactions', cyclecounts: 'Cycle Counts',
+    categories: 'Categories', locations: 'Locations', vendors: 'Vendors', users: 'Users'
+  }[view] || view;
+
+  const handlers = {
+    dashboard:    loadDashboard,
+    assets:       loadAssets,
+    stock:        loadStock,
+    transactions: loadTransactions,
+    cyclecounts:  loadCycles,
+    categories:   () => loadLookupTable('categories'),
+    locations:    () => loadLookupTable('locations'),
+    vendors:      () => loadLookupTable('vendors'),
+    users:        () => loadLookupTable('users'),
+  };
+  handlers[view]?.();
+}
+
+// ── API wrapper ───────────────────────────────────────────────
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  return res.json();
+}
+
+// ── Lookups (cached) ─────────────────────────────────────────
+async function getLookup(resource, params = '') {
+  const key = resource + params;
+  if (lookupCache[key]) return lookupCache[key];
+  const r = await apiFetch(`${API.lookups}?resource=${resource}${params}`);
+  if (r.success) lookupCache[key] = r.data;
+  return r.data || [];
+}
+
+async function populateSelect(selectId, resource, valueField = 'id', labelField = 'name', params = '') {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  const items = await getLookup(resource, params);
+  const cur = el.value;
+  el.innerHTML = '<option value="">Select…</option>';
+  items.forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i[valueField];
+    opt.textContent = i[labelField] || i.name;
+    el.appendChild(opt);
+  });
+  if (cur) el.value = cur;
+}
+
+// ── Dashboard ────────────────────────────────────────────────
+async function loadDashboard() {
+  const statuses = ['In-Use','In-Stock','Under Repair','Retired','Disposed'];
+  let total = 0;
+  const counts = {};
+
+  for (const s of statuses) {
+    const r = await apiFetch(`${API.assets}?status=${encodeURIComponent(s)}&per_page=1`);
+    counts[s] = r.data?.total || 0;
+    total += counts[s];
+  }
+
+  document.getElementById('s-total').textContent   = total;
+  document.getElementById('s-inuse').textContent   = counts['In-Use'];
+  document.getElementById('s-instock').textContent = counts['In-Stock'];
+  document.getElementById('s-repair').textContent  = counts['Under Repair'];
+  document.getElementById('s-retired').textContent = (counts['Retired'] || 0) + (counts['Disposed'] || 0);
+
+  const low = await apiFetch(`${API.stock}?action=low_stock`);
+  document.getElementById('s-lowstock').textContent = low.data?.length || 0;
+}
+
+// ── Assets ───────────────────────────────────────────────────
+async function loadAssets(page = 1) {
+  assetPage = page;
+  await populateSelect('asset-filter-cat', 'categories');
+  const search = document.getElementById('asset-search').value;
+  const status = document.getElementById('asset-filter-status').value;
+  const cat    = document.getElementById('asset-filter-cat').value;
+
+  const qs = `?page=${page}&per_page=15&search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}&category_id=${cat}`;
+  const r  = await apiFetch(API.assets + qs);
+  if (!r.success) { document.getElementById('asset-table-container').innerHTML = errHTML(r.message); return; }
+
+  const { items, total, total_pages } = r.data;
+  let html = `<table><thead><tr>
+    <th>Asset Tag</th><th>Category</th><th>Make/Model</th><th>Serial</th>
+    <th>Status</th><th>Assigned To</th><th>Location</th><th>Warranty End</th><th>Actions</th>
+  </tr></thead><tbody>`;
+
+  if (!items.length) html += `<tr class="empty-row"><td colspan="9">No assets found.</td></tr>`;
+  else items.forEach(a => {
+    const warningWarn = a.warranty_end && new Date(a.warranty_end) < new Date(Date.now() + 30*86400000);
+    html += `<tr>
+      <td><strong>${esc(a.asset_tag)}</strong></td>
+      <td>${esc(a.category_name||'')}</td>
+      <td>${esc(a.make||'')} ${esc(a.model||'')}</td>
+      <td style="color:var(--muted);font-size:12px">${esc(a.serial_number||'—')}</td>
+      <td>${statusChip(a.status)}</td>
+      <td>${esc(a.assigned_user_name||'—')}</td>
+      <td style="font-size:12px">${esc(a.location_full||'—')}</td>
+      <td style="font-size:12px;color:${warningWarn?'var(--warn)':'inherit'}">${a.warranty_end||'—'}</td>
+      <td>
+        <button class="btn btn-ghost sm" onclick="editAsset(${a.id})">Edit</button>
+        <button class="btn btn-ghost sm" onclick="viewHistory(${a.id})">Log</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  html += paginationHTML(page, total_pages, total, 'loadAssets');
+  document.getElementById('asset-table-container').innerHTML = html;
+}
+
+// Asset Modal
+async function openAssetModal(data = null) {
+  document.getElementById('modal-asset-title').textContent = data ? 'Edit Asset' : 'New Asset';
+  document.getElementById('modal-asset-alert').innerHTML = '';
+  document.getElementById('form-asset').reset();
+  document.getElementById('a-id').value = '';
+
+  // Load selects
+  await Promise.all([
+    populateSelect('a-category_id', 'categories'),
+    populateSelect('a-vendor_id', 'vendors'),
+    populateSelect('a-assigned_user_id', 'users', 'id', 'full_name'),
+    populateSelect('a-department_id', 'departments'),
+    populateSelect('a-location_id', 'locations'),
+  ]);
+
+  if (data) {
+    const fields = ['asset_tag','serial_number','barcode','category_id','make','model','cpu','ram',
+      'storage','os','firmware_version','vendor_id','po_number','invoice_number','purchase_cost',
+      'date_acquired','warranty_start','warranty_end','sla_tier','support_contract_ref','status',
+      'assigned_user_id','department_id','location_id','cost_center','parent_asset_id',
+      'installed_at','connected_to','notes'];
+    fields.forEach(f => {
+      const el = document.getElementById('a-' + f);
+      if (el && data[f] != null) el.value = data[f];
+    });
+    document.getElementById('a-id').value = data.id;
+  }
+
+  openModal('modal-asset');
+  // Reset to first tab
+  document.querySelector('#modal-asset .tab').click();
+}
+
+async function editAsset(id) {
+  const r = await apiFetch(`${API.assets}?id=${id}`);
+  if (r.success) openAssetModal(r.data);
+}
+
+async function saveAsset() {
+  const id = document.getElementById('a-id').value;
+  const fields = ['asset_tag','serial_number','barcode','category_id','make','model','cpu','ram',
+    'storage','os','firmware_version','vendor_id','po_number','invoice_number','purchase_cost',
+    'date_acquired','warranty_start','warranty_end','sla_tier','support_contract_ref','status',
+    'assigned_user_id','department_id','location_id','cost_center','parent_asset_id',
+    'installed_at','connected_to','notes'];
+  const body = { performed_by: CURRENT_USER };
+  fields.forEach(f => { const el = document.getElementById('a-' + f); if (el) body[f] = el.value || null; });
+
+  const url = id ? `${API.assets}?id=${id}` : API.assets;
+  const method = id ? 'PUT' : 'POST';
+  const r = await apiFetch(url, { method, body: JSON.stringify(body) });
+
+  if (r.success) {
+    closeModal('modal-asset');
+    loadAssets(assetPage);
+    lookupCache = {};
+  } else {
+    document.getElementById('modal-asset-alert').innerHTML = errHTML(r.message);
+  }
+}
+
+async function viewHistory(id) {
+  const r = await apiFetch(`${API.assets}?action=history&id=${id}`);
+  if (!r.success) return alert(r.message);
+  const rows = r.data.items.map(l => `<tr>
+    <td>${l.performed_at}</td><td>${l.action_type}</td>
+    <td>${esc(l.from_status||'')} → ${esc(l.to_status||'')}</td>
+    <td>${esc(l.performed_by_name||'')}</td>
+    <td>${esc(l.reason||'')}</td>
+  </tr>`).join('');
+  alert('Lifecycle log loaded — ' + r.data.total + ' entries.\n(Full modal will be added by UI team.)');
+}
+
+// ── Stock Items ───────────────────────────────────────────────
+async function loadStock(page = 1) {
+  stockPage = page;
+  const search = document.getElementById('stock-search').value;
+  const qs = `?page=${page}&per_page=15&search=${encodeURIComponent(search)}`;
+  const r  = await apiFetch(API.stock + qs);
+  if (!r.success) { document.getElementById('stock-table-container').innerHTML = errHTML(r.message); return; }
+
+  const { items, total, total_pages } = r.data;
+  let html = `<table><thead><tr>
+    <th>Code</th><th>Name</th><th>Category</th><th>UOM</th><th>Total Qty</th><th>Unit Cost</th><th>Actions</th>
+  </tr></thead><tbody>`;
+
+  if (!items.length) html += `<tr class="empty-row"><td colspan="7">No items found.</td></tr>`;
+  else items.forEach(i => {
+    html += `<tr>
+      <td><strong>${esc(i.item_code)}</strong></td>
+      <td>${esc(i.name)}</td>
+      <td>${esc(i.category_name||'—')}</td>
+      <td>${esc(i.unit_of_measure)}</td>
+      <td>${parseFloat(i.total_qty_on_hand||0).toFixed(2)}</td>
+      <td>${i.unit_cost ? '₱'+parseFloat(i.unit_cost).toFixed(2) : '—'}</td>
+      <td>
+        <button class="btn btn-ghost sm" onclick="viewTxnsForItem(${i.id})">Transactions</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  html += paginationHTML(page, total_pages, total, 'loadStock');
+  document.getElementById('stock-table-container').innerHTML = html;
+}
+
+async function openStockModal() {
+  document.getElementById('modal-stock-alert').innerHTML = '';
+  document.getElementById('si-item_code').value = '';
+  document.getElementById('si-name').value = '';
+  await Promise.all([
+    populateSelect('si-category_id', 'categories'),
+    populateSelect('si-location_id', 'locations'),
+  ]);
+  openModal('modal-stock');
+}
+
+async function saveStockItem() {
+  const body = {
+    item_code:         document.getElementById('si-item_code').value,
+    name:              document.getElementById('si-name').value,
+    description:       document.getElementById('si-description').value || null,
+    category_id:       document.getElementById('si-category_id').value || null,
+    unit_of_measure:   document.getElementById('si-uom').value || 'pcs',
+    compatible_models: document.getElementById('si-compatible_models').value || null,
+    has_expiry:        document.getElementById('si-has_expiry').value,
+    unit_cost:         document.getElementById('si-unit_cost').value || null,
+    location_id:       document.getElementById('si-location_id').value || null,
+    quantity_on_hand:  document.getElementById('si-qty').value || 0,
+    min_level:         document.getElementById('si-min').value || 0,
+    max_level:         document.getElementById('si-max').value || null,
+    reorder_point:     document.getElementById('si-rop').value || null,
+    lead_time_days:    document.getElementById('si-lead').value || null,
+  };
+
+  const r = await apiFetch(API.stock, { method: 'POST', body: JSON.stringify(body) });
+  if (r.success) { closeModal('modal-stock'); loadStock(); }
+  else document.getElementById('modal-stock-alert').innerHTML = errHTML(r.message);
+}
+
+async function viewTxnsForItem(id) {
+  navigate('transactions');
+  setTimeout(loadTransactions, 100);
+}
+
+// ── Transactions ──────────────────────────────────────────────
+async function loadTransactions(page = 1) {
+  txnPage = page;
+  const type = document.getElementById('txn-filter-type').value;
+  const qs = `?page=${page}&per_page=15&type=${encodeURIComponent(type)}`;
+  const r  = await apiFetch(API.txn + qs);
+  if (!r.success) { document.getElementById('txn-table-container').innerHTML = errHTML(r.message); return; }
+
+  const { items, total, total_pages } = r.data;
+  let html = `<table><thead><tr>
+    <th>Date</th><th>Type</th><th>Item</th><th>Qty</th><th>From</th><th>To</th><th>Reason</th><th>By</th>
+  </tr></thead><tbody>`;
+
+  if (!items.length) html += `<tr class="empty-row"><td colspan="8">No transactions found.</td></tr>`;
+  else items.forEach(t => {
+    const qtyStyle = parseFloat(t.quantity) >= 0 ? 'color:var(--accent2)' : 'color:var(--danger)';
+    html += `<tr>
+      <td style="font-size:12px;color:var(--muted)">${t.performed_at}</td>
+      <td><span class="chip chip-instock">${esc(t.transaction_type)}</span></td>
+      <td>${esc(t.item_code)} — ${esc(t.item_name)}</td>
+      <td style="${qtyStyle};font-weight:700">${parseFloat(t.quantity)>=0?'+':''}${parseFloat(t.quantity).toFixed(2)} ${esc(t.unit_of_measure)}</td>
+      <td style="font-size:12px">${esc(t.from_location_name||'—')}</td>
+      <td style="font-size:12px">${esc(t.to_location_name||'—')}</td>
+      <td style="font-size:12px">${esc(t.reason_code||'')}</td>
+      <td style="font-size:12px">${esc(t.performed_by_name||'')}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  html += paginationHTML(page, total_pages, total, 'loadTransactions');
+  document.getElementById('txn-table-container').innerHTML = html;
+}
+
+async function openTxnModal(action) {
+  currentTxnAction = action;
+  const titles = { grn: '📥 Goods Received (GRN)', issue: '📤 Issue Stock', transfer: '↔️ Transfer Stock', adjust: '✏️ Stock Adjustment' };
+  document.getElementById('modal-txn-title').textContent = titles[action];
+  document.getElementById('modal-txn-alert').innerHTML = '';
+  document.getElementById('txn-qty').value = '';
+  document.getElementById('txn-newqty').value = '';
+
+  document.getElementById('txn-from-loc-wrap').style.display = action === 'transfer' ? '' : 'none';
+  document.getElementById('txn-newqty-wrap').style.display   = action === 'adjust'   ? '' : 'none';
+
+  // Load items
+  const items = await getLookup('stock_items') || [];
+  const itemSel = document.getElementById('txn-item_id');
+  const r = await apiFetch(`${API.stock}?per_page=200`);
+  itemSel.innerHTML = '<option value="">Select…</option>';
+  (r.data?.items || []).forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i.id;
+    opt.textContent = `${i.item_code} — ${i.name}`;
+    itemSel.appendChild(opt);
+  });
+
+  await Promise.all([
+    populateSelect('txn-from_loc', 'locations'),
+    populateSelect('txn-to_loc',   'locations'),
+  ]);
+
+  openModal('modal-txn');
+}
+
+async function saveTxn() {
+  const body = {
+    item_id:          document.getElementById('txn-item_id').value || null,
+    location_id:      document.getElementById('txn-to_loc').value || null,
+    to_location_id:   document.getElementById('txn-to_loc').value || null,
+    from_location_id: document.getElementById('txn-from_loc').value || null,
+    quantity:         document.getElementById('txn-qty').value || null,
+    new_quantity:     document.getElementById('txn-newqty').value || null,
+    reference_type:   document.getElementById('txn-ref').value || null,
+    reason_code:      document.getElementById('txn-reason').value,
+    notes:            document.getElementById('txn-notes').value || null,
+    performed_by:     CURRENT_USER,
+  };
+
+  const r = await apiFetch(`${API.txn}?action=${currentTxnAction}`, { method: 'POST', body: JSON.stringify(body) });
+  if (r.success) { closeModal('modal-txn'); loadTransactions(); }
+  else document.getElementById('modal-txn-alert').innerHTML = errHTML(r.message);
+}
+
+// ── Cycle Counts ──────────────────────────────────────────────
+async function loadCycles(page = 1) {
+  cyclePage = page;
+  const r = await apiFetch(`${API.cycles}?page=${page}&per_page=15`);
+  if (!r.success) { document.getElementById('cycle-table-container').innerHTML = errHTML(r.message); return; }
+
+  const { items, total, total_pages } = r.data;
+  let html = `<table><thead><tr>
+    <th>Name</th><th>Location</th><th>Planned Date</th><th>Status</th><th>Created By</th><th>Actions</th>
+  </tr></thead><tbody>`;
+
+  if (!items.length) html += `<tr class="empty-row"><td colspan="6">No cycle count plans.</td></tr>`;
+  else items.forEach(p => {
+    html += `<tr>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td>${esc(p.location_name||'All')}</td>
+      <td>${p.planned_date}</td>
+      <td>${esc(p.status)}</td>
+      <td>${esc(p.created_by_name||'—')}</td>
+      <td>
+        ${p.status === 'Draft' ? `<button class="btn btn-ghost sm" onclick="startCycle(${p.id})">Start</button>` : ''}
+        ${p.status === 'In Progress' ? `<button class="btn btn-success sm" onclick="reconcileCycle(${p.id})">Reconcile</button>` : ''}
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  html += paginationHTML(page, total_pages, total, 'loadCycles');
+  document.getElementById('cycle-table-container').innerHTML = html;
+}
+
+async function openCycleModal() {
+  document.getElementById('modal-cycle-alert').innerHTML = '';
+  await populateSelect('cc-location', 'locations');
+  openModal('modal-cycle');
+}
+
+async function saveCyclePlan() {
+  const body = {
+    name:        document.getElementById('cc-name').value,
+    planned_date:document.getElementById('cc-date').value,
+    location_id: document.getElementById('cc-location').value || null,
+    notes:       document.getElementById('cc-notes').value || null,
+    created_by:  CURRENT_USER,
+  };
+  const r = await apiFetch(API.cycles, { method: 'POST', body: JSON.stringify(body) });
+  if (r.success) { closeModal('modal-cycle'); loadCycles(); }
+  else document.getElementById('modal-cycle-alert').innerHTML = errHTML(r.message);
+}
+
+async function startCycle(id) {
+  if (!confirm('Start this count plan?')) return;
+  const r = await apiFetch(`${API.cycles}?action=start&id=${id}`, { method: 'POST', body: '{}' });
+  alert(r.message);
+  loadCycles();
+}
+
+async function reconcileCycle(id) {
+  if (!confirm('Reconcile and apply all approved variances to stock?')) return;
+  const r = await apiFetch(`${API.cycles}?action=reconcile&id=${id}`, {
+    method: 'POST', body: JSON.stringify({ performed_by: CURRENT_USER })
+  });
+  alert(r.message);
+  loadCycles();
+}
+
+// ── Lookup Tables ─────────────────────────────────────────────
+async function loadLookupTable(resource) {
+  const containerId = { categories: 'cat-container', locations: 'loc-container', vendors: 'vendor-container', users: 'user-container' }[resource];
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '<div class="loader">Loading…</div>';
+
+  const r = await apiFetch(`${API.lookups}?resource=${resource}`);
+  if (!r.success) { el.innerHTML = errHTML(r.message); return; }
+
+  const items = r.data;
+  const colMap = {
+    categories:  ['id','name','description'],
+    departments: ['id','name','cost_center'],
+    locations:   ['id','name','site_name','description'],
+    vendors:     ['id','name','contact_name','email','phone'],
+    users:       ['id','employee_id','full_name','email','role','department_name'],
+  };
+  const cols = colMap[resource] || ['id','name'];
+  let html = `<div class="table-wrap"><div class="table-toolbar">
+    <span style="font-size:12px;color:var(--muted)">${items.length} records</span>
+  </div><table><thead><tr>`;
+  cols.forEach(c => html += `<th>${c.replace(/_/g,' ')}</th>`);
+  html += `</tr></thead><tbody>`;
+  if (!items.length) html += `<tr class="empty-row"><td colspan="${cols.length}">No records.</td></tr>`;
+  else items.forEach(i => {
+    html += '<tr>';
+    cols.forEach(c => html += `<td>${esc(i[c] != null ? String(i[c]) : '—')}</td>`);
+    html += '</tr>';
+  });
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const parent = tab.closest('.modal-body');
+    parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tabTarget;
+    parent.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = el.id === target ? '' : 'none');
+  });
+});
+
+// ── Modal helpers ────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(mo => {
+  mo.addEventListener('click', e => { if (e.target === mo) mo.classList.remove('open'); });
+});
+
+// ── UI helpers ────────────────────────────────────────────────
+function esc(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function statusChip(s) {
+  const map = { 'In-Use':'chip-inuse','In-Stock':'chip-instock','Under Repair':'chip-repair','Retired':'chip-retired','Disposed':'chip-disposed','Lost':'chip-lost' };
+  return `<span class="chip ${map[s]||''}">${esc(s)}</span>`;
+}
+
+function errHTML(msg) {
+  return `<div class="alert alert-error">${esc(msg)}</div>`;
+}
+
+function paginationHTML(page, totalPages, total, fn) {
+  if (totalPages <= 1) return `<div class="pagination"><span class="page-info">${total} records</span></div>`;
+  return `<div class="pagination">
+    <span class="page-info">${total} records — Page ${page} of ${totalPages}</span>
+    ${page > 1 ? `<button class="btn btn-ghost sm" onclick="${fn}(${page-1})">‹ Prev</button>` : ''}
+    ${page < totalPages ? `<button class="btn btn-ghost sm" onclick="${fn}(${page+1})">Next ›</button>` : ''}
+  </div>`;
+}
+
+// ── Init ─────────────────────────────────────────────────────
+loadDashboard();
+</script>
+</body>
+</html>
