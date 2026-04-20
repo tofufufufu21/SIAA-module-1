@@ -1,31 +1,27 @@
 /* ============================================================
-   layout.js — Shared sidebar + topbar for ALL modules
+   layout.js — Shared sidebar for ALL modules
    Include this in every module HTML after app.js
    ============================================================ */
 
 'use strict';
 
 /**
- * Call this at the bottom of each module's DOMContentLoaded.
- * @param {string} activeModule - 'dashboard'|'assets'|'stock'|'module2'|'module3'|etc.
+ * Call this inside each page's DOMContentLoaded.
+ * @param {string} activeModule - 'dashboard'|'assets'|'stock'|'module2'|etc.
  * @param {string} pageTitle    - Text shown in the topbar
  */
 function initLayout(activeModule, pageTitle) {
-  // Set topbar title
   const titleEl = document.getElementById('tb-title');
   if (titleEl) titleEl.textContent = pageTitle;
 
-  // Highlight the correct nav item
   document.querySelectorAll('.nav-item[data-module]').forEach(n => {
     n.classList.toggle('active', n.dataset.module === activeModule);
   });
 
-  // Hamburger toggle (mobile)
   document.querySelector('.tb-hamburger')?.addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
   });
 
-  // Set today's date if element exists
   const dateEl = document.getElementById('today-date');
   if (dateEl) {
     dateEl.textContent = new Date().toLocaleDateString('en-US', {
@@ -36,7 +32,6 @@ function initLayout(activeModule, pageTitle) {
 
 /**
  * Renders the full sidebar HTML into #sidebar.
- * Each nav item uses data-module and an href to link to the correct page.
  */
 function renderSidebar() {
   const sidebar = document.getElementById('sidebar');
@@ -50,7 +45,7 @@ function renderSidebar() {
     </div>
 
     <div class="sb-section">MAIN</div>
-    <a class="nav-item" data-module="dashboard" href="index.html">
+    <a class="nav-item" data-module="dashboard" href="module1.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </a>
