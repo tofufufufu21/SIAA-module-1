@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT&DS | Service Planner</title>
+<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+<nav id="sidebar"></nav>
+
+<div id="main">
+  <header id="topbar">
+    <button class="tb-hamburger"><span></span><span></span><span></span></button>
+    <h1 class="tb-title" id="tb-title">Service Planner</h1>
+    <div class="tb-spacer"></div>
+    <div class="role-toggle"><button class="active">User</button><button>Admin</button></div>
+  </header>
+
+  <div id="content">
+    <div class="page-hdr">
+      <div class="page-title">Service Planner</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         MODULE 2 — PUT YOUR HTML CONTENT HERE
+         This page is owned by the Module 2 group.
+
+         Steps:
+         1. Build your UI (tables, forms, modals) in this file
+         2. Create public/assets/js/module2.js for your JS logic
+         3. Add <script src="assets/js/module2.js"></script> below
+         4. Register your backend routes in routes/api.php
+         5. Create your PHP files in:
+              app/models/        ← your data models
+              app/repositories/  ← your SQL queries
+              app/services/      ← your business logic
+              app/controllers/   ← your HTTP endpoints
+    ═══════════════════════════════════════════════════════ -->
+
+    <div class="table-card" style="padding:40px;text-align:center;color:var(--text-3)">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      <div style="font-size:16px;font-weight:700;color:var(--text-2);margin-bottom:6px">Module 2 — Service Planner</div>
+      <div style="font-size:13px">This module is under development. Build your UI here.</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script src="assets/js/app.js"></script>
+<script src="assets/js/layout.js"></script>
+<!-- ADD YOUR MODULE JS HERE: <script src="assets/js/module2.js"></script> -->
+<script>
+  ApiClient.base = '/module1/public';
+  document.addEventListener('DOMContentLoaded', () => {
+    renderSidebar();
+    initLayout('module2', 'Service Planner');
+  });
+</script>
+</body>
+</html>

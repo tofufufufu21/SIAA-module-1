@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT&DS | Asset Master</title>
+<link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+<nav id="sidebar"></nav>
+
+<div id="main">
+  <header id="topbar">
+    <button class="tb-hamburger"><span></span><span></span><span></span></button>
+    <h1 class="tb-title" id="tb-title">Asset Master</h1>
+    <div class="tb-search">
+      <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="global-search" placeholder="Search assets, serials, tags, users...">
+    </div>
+    <div class="tb-spacer"></div>
+    <div class="role-toggle"><button class="active">User</button><button>Admin</button></div>
+    <div class="tb-actions">
+      <button class="tb-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></button>
+      <button class="tb-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></button>
+    </div>
+  </header>
+
+  <div id="content">
+    <div class="page-hdr">
+      <div class="page-title">Asset Master</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="exportAssets()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export
+        </button>
+        <button class="btn btn-primary" onclick="openAddAsset()">+ Add Asset</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <label>Category</label><select class="fselect" id="a-filter-cat"><option value="">All</option></select>
+      <label>Status</label>
+      <select class="fselect" id="a-filter-status">
+        <option value="">All</option><option>In-Use</option><option>In-Stock</option>
+        <option>Under Repair</option><option>Retired</option><option>Disposed</option><option>Lost</option>
+      </select>
+      <label>Department</label><select class="fselect" id="a-filter-dept"><option value="">All</option></select>
+      <label>Location</label><select class="fselect" id="a-filter-loc"><option value="">All</option></select>
+      <div class="filter-spacer"></div>
+      <button class="btn btn-primary btn-sm" onclick="loadAssets(1)">Apply</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearAssetFilters()">Clear</button>
+    </div>
+
+    <div class="table-card">
+      <div class="table-toolbar">
+        <div class="tsearch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" id="a-search" placeholder="Search assets, serials, tags..." onkeydown="if(event.key==='Enter')loadAssets(1)"></div>
+        <span class="tcount" id="a-count">Loading…</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th class="th-cb"><input type="checkbox" class="row-cb" id="cb-all-assets"></th>
+            <th>ASSET TAG</th><th>SERIAL NO.</th><th>CATEGORY</th><th>MODEL</th>
+            <th>STATUS</th><th>ASSIGNED TO</th><th>DEPT</th><th>WARRANTY END</th><th>ACTIONS</th>
+          </tr></thead>
+          <tbody id="a-tbody"><tr><td colspan="10"><div class="empty-state"><p>Loading assets…</p></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="a-pagination"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<!-- MODAL: CONFIRM -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal modal-sm">
+    <div class="modal-body">
+      <div class="confirm-body">
+        <div class="ico">⚠️</div>
+        <h3 id="confirm-title">Are you sure?</h3>
+        <p id="confirm-msg">This action cannot be undone.</p>
+        <div style="display:flex;gap:10px;justify-content:center">
+          <button class="btn btn-secondary" onclick="Modal.close('modal-confirm')">Cancel</button>
+          <button class="btn btn-primary" id="confirm-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ADD/EDIT ASSET -->
+<div class="modal-overlay" id="modal-asset">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-hdr-title" id="modal-asset-title">ADD NEW ASSET</span>
+      <button class="modal-x" onclick="Modal.close('modal-asset')">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" data-tab="general">General</div>
+      <div class="modal-tab" data-tab="purchase">Purchase &amp; Warranty</div>
+      <div class="modal-tab" data-tab="assignment">Assignment</div>
+      <div class="modal-tab" data-tab="documents">Documents</div>
+    </div>
+    <div class="modal-body">
+      <form id="form-asset">
+        <input type="hidden" id="a-id">
+        <!-- General -->
+        <div class="tab-panel form-grid" data-panel="general">
+          <div class="form-group"><label class="form-label">Asset tag <span class="req">*</span></label><input class="form-control" id="a-asset_tag" placeholder="AST-00001" required></div>
+          <div class="form-group"><label class="form-label">Serial no</label><input class="form-control" id="a-serial_number" placeholder="SN-XXXXXXX"></div>
+          <div class="form-group"><label class="form-label">Category <span class="req">*</span></label><select class="form-control" id="a-category_id"><option value="">Select</option></select></div>
+          <div class="form-group"><label class="form-label">Brand</label><input class="form-control" id="a-make" placeholder="e.g. Dell"></div>
+          <div class="form-group"><label class="form-label">Model</label><input class="form-control" id="a-model" placeholder="e.g. RX1000"></div>
+          <div class="form-group"><label class="form-label">Operating system</label><input class="form-control" id="a-os" placeholder="Windows 11 Pro"></div>
+          <div class="form-group"><label class="form-label">Firmware version</label><input class="form-control" id="a-firmware" placeholder="v2.0"></div>
+          <div class="form-group"><label class="form-label">Current Status <span class="req">*</span></label>
+            <select class="form-control" id="a-status">
+              <option value="In-Stock">In-Stock</option><option value="In-Use">In-Use</option>
+              <option value="Under Repair">Under Repair</option><option value="Retired">Retired</option>
+              <option value="Disposed">Disposed</option><option value="Lost">Lost</option>
+            </select>
+          </div>
+          <div class="form-group f-full"><label class="form-label">Specification / Notes</label><textarea class="form-control" id="a-specs" rows="3" placeholder="RAM, CPU, Storage, etc."></textarea></div>
+        </div>
+        <!-- Purchase & Warranty -->
+        <div class="tab-panel form-grid hidden" data-panel="purchase">
+          <div class="form-group"><label class="form-label">Vendor name</label><select class="form-control" id="a-vendor_id"><option value="">Select vendor</option></select></div>
+          <div class="form-group"><label class="form-label">PO number</label><input class="form-control" id="a-po_number" placeholder="PO-2024-0001"></div>
+          <div class="form-group"><label class="form-label">Invoice number</label><input class="form-control" id="a-invoice_number" placeholder="INV-XXXX"></div>
+          <div class="form-group"><label class="form-label">Purchase Cost</label><input class="form-control" id="a-purchase_cost" type="number" step="0.01" placeholder="₱0.00"></div>
+          <div class="form-group"><label class="form-label">Date acquired</label><input class="form-control" id="a-date_acquired" type="date"></div>
+          <div class="form-group"><label class="form-label">Warranty Start</label><input class="form-control" id="a-warranty_start" type="date"></div>
+          <div class="form-group"><label class="form-label">Warranty End</label><input class="form-control" id="a-warranty_end" type="date"></div>
+          <div class="form-group"><label class="form-label">SLA tier</label><select class="form-control" id="a-sla_tier"><option value="">Select</option><option>Standard</option><option>Silver</option><option>Gold</option><option>Premium</option><option>NBD</option></select></div>
+          <div class="form-group f-full"><label class="form-label">Support contact reference</label><input class="form-control" id="a-support_contact" placeholder="support@vendor.com"></div>
+        </div>
+        <!-- Assignment -->
+        <div class="tab-panel form-grid hidden" data-panel="assignment">
+          <div class="form-group f-full"><label class="form-label">Assigned user</label><select class="form-control" id="a-user_id"><option value="">Unassigned</option></select></div>
+          <div class="form-group"><label class="form-label">Department</label><select class="form-control" id="a-department"><option value="">Unassigned</option></select></div>
+          <div class="form-group"><label class="form-label">Location</label><select class="form-control" id="a-location"><option value="">Select</option></select></div>
+          <div class="form-group"><label class="form-label">Cost Center</label><input class="form-control" id="a-cost_center" placeholder="CC-1001"></div>
+          <div class="form-group"><label class="form-label">Parent asset</label><input class="form-control" id="a-parent_asset" placeholder="AST-XXXXX"></div>
+        </div>
+        <!-- Documents -->
+        <div class="tab-panel hidden" data-panel="documents">
+          <div class="file-drop" onclick="document.getElementById('attach-file').click()">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            <p>Drop files here or click to browse</p>
+            <span>PDF, DOCX, PNG, XLSX — max 10 MB each</span>
+          </div>
+          <input type="file" id="attach-file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt,.csv" onchange="uploadAttachment()">
+          <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+            <label class="form-label">Label</label>
+            <select class="form-control" id="attach-label" style="width:200px"><option>Invoice</option><option>Photo</option><option>Manual</option><option>Warranty</option><option>Contract</option><option>Other</option></select>
+          </div>
+          <div id="attach-list" style="margin-top:14px"><p style="color:var(--text-3);font-size:13px">Save the asset first to upload documents.</p></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('modal-asset')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAsset()">Save Asset</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: VIEW ASSET -->
+<div class="modal-overlay" id="modal-view-asset">
+  <div class="modal modal-lg">
+    <div class="modal-hdr">
+      <span class="modal-hdr-title">VIEW ASSET  |  <span id="vw-asset-tag"></span></span>
+      <div class="modal-hdr-meta"><span class="badge" id="vw-status-badge"></span><span class="cat-badge" id="vw-cat-badge"></span></div>
+      <button class="modal-x" onclick="Modal.close('modal-view-asset')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="detail-section"><div class="detail-hdr">GENERAL INFO</div>
+        <div class="detail-row"><span class="detail-key">Serial no.</span><span class="detail-val" id="vw-serial"></span></div>
+        <div class="detail-row"><span class="detail-key">Brand / Model</span><span class="detail-val" id="vw-brand"></span></div>
+        <div class="detail-row"><span class="detail-key">Category</span><span class="detail-val" id="vw-category"></span></div>
+        <div class="detail-row"><span class="detail-key">Operating system</span><span class="detail-val" id="vw-os"></span></div>
+        <div class="detail-row"><span class="detail-key">Firmware</span><span class="detail-val" id="vw-firmware"></span></div>
+        <div class="detail-row"><span class="detail-key">Specification</span><span class="detail-val" id="vw-spec"></span></div>
+      </div>
+      <div class="detail-section"><div class="detail-hdr">PURCHASE &amp; WARRANTY</div>
+        <div class="detail-row"><span class="detail-key">Vendor</span><span class="detail-val" id="vw-vendor"></span></div>
+        <div class="detail-row"><span class="detail-key">PO / Invoice</span><span class="detail-val" id="vw-po"></span></div>
+        <div class="detail-row"><span class="detail-key">Purchase cost</span><span class="detail-val" id="vw-cost"></span></div>
+        <div class="detail-row"><span class="detail-key">Date acquired</span><span class="detail-val" id="vw-acquired"></span></div>
+        <div class="detail-row"><span class="detail-key">Warranty period</span><span class="detail-val" id="vw-warranty"></span></div>
+        <div class="detail-row"><span class="detail-key">SLA tier</span><span class="detail-val" id="vw-sla"></span></div>
+      </div>
+      <div class="detail-section"><div class="detail-hdr">ASSIGNMENT</div>
+        <div class="detail-row"><span class="detail-key">Assigned to</span><span class="detail-val" id="vw-assigned"></span></div>
+        <div class="detail-row"><span class="detail-key">Department</span><span class="detail-val" id="vw-dept"></span></div>
+        <div class="detail-row"><span class="detail-key">Location</span><span class="detail-val" id="vw-location"></span></div>
+        <div class="detail-row"><span class="detail-key">Cost center</span><span class="detail-val" id="vw-cc"></span></div>
+      </div>
+      <div class="detail-section"><div class="detail-hdr">HISTORY TIMELINE</div><div style="padding:14px 16px" id="vw-timeline"></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="openTransferFromView()">Transfer</button>
+      <button class="btn btn-dark" onclick="openEditFromView()">Edit</button>
+      <button class="btn btn-secondary" onclick="Modal.close('modal-view-asset')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: TRANSFER -->
+<div class="modal-overlay" id="modal-transfer">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-hdr-title">TRANSFER ASSET  |  <span id="tf-asset-tag"></span></span>
+      <div class="modal-hdr-meta"><span class="badge" id="tf-status-badge"></span><span class="cat-badge" id="tf-cat-badge"></span></div>
+      <button class="modal-x" onclick="Modal.close('modal-transfer')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="signoff-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/></svg>
+        <div><strong>Sign-off required.</strong> This transfer will be logged and a written acknowledgment from the new custodian is mandatory.</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Current custodian</label><input class="form-control" id="tf-current" readonly></div>
+        <div class="form-group"><label class="form-label">New custodian <span class="req">*</span></label><input class="form-control" id="tf-custodian" placeholder="Full name or Employee ID"></div>
+        <div class="form-group"><label class="form-label">New department <span class="req">*</span></label><select class="form-control" id="tf-department"><option value="">Select</option></select></div>
+        <div class="form-group"><label class="form-label">New location</label><select class="form-control" id="tf-location"><option value="">Select</option></select></div>
+        <div class="form-group f-full"><label class="form-label">Reason for transfer <span class="req">*</span></label><textarea class="form-control" id="tf-reason" rows="3" placeholder="e.g. Reassignment due to department change"></textarea></div>
+      </div>
+      <div class="form-check">
+        <input type="checkbox" id="tf-signoff">
+        <label for="tf-signoff">I confirm that the new custodian has acknowledged and signed off on this transfer.</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('modal-transfer')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmTransfer()">Confirm Transfer</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/app.js"></script>
+<script src="assets/js/layout.js"></script>
+<script src="assets/js/assets.js"></script>
+</body>
+</html>
